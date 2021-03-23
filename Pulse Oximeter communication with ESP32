@@ -1,0 +1,55 @@
+#include <BLEDevice.h>
+#include <BLEUtils.h>
+#include <BLEScan.h>
+#include <BLEAdvertisedDevice.h>
+#define SCAN_TIME  60 // seconds
+static BLEUUID serviceUUID("49535343-fe7d-4ae5-8fa9-9fafd205e455");
+static BLEUUID    charUUID("49535343-1e4d-4bd9-ba61-23c647249616"); 
+String My_BLE_Address = "00:a0:50:c2:23:de"; 
+static BLERemoteCharacteristic* pRemoteCharacteristic;
+BLEScan* pBLEScan; //Name the scanning device as pBLEScan
+BLEScanResults foundDevices;
+
+static BLEAddress *Server_BLE_Address;
+String Scaned_BLE_Address;
+
+class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks {
+    void onResult(BLEAdvertisedDevice advertisedDevice)
+    {
+      Server_BLE_Address=new BLEAddress(advertisedDevice.getAddress());
+      Scaned_BLE_Address = Server_BLE_Address->toString().c_str();
+      Serial.print("Found Device Address:");
+      Serial.println( Scaned_BLE_Address);
+        if (advertisedDevice.haveServiceData() && Scaned_BLE_Address==My_BLE_Address) {
+            std::string strServiceData = advertisedDevice.getServiceData();
+            uint8_t cServiceData[100];
+            char charServiceData[100];
+
+            strServiceData.copy((char *)cServiceData, strServiceData.length(), 0);
+
+            Serial.printf("\n\nAdvertised Device: %s\n", advertisedDevice.toString().c_str());
+
+            for (int i=0;i<strServiceData.length();i++) {
+                Serial.printf(&charServiceData[i*2], "%02x", cServiceData[i]);
+            }
+        }
+    }
+};
+void setup() {
+  Serial.begin(115200);
+ // BLE init and setting
+    BLEDevice::init("");
+    pBLEScan = BLEDevice::getScan(); //create new scan
+    pBLEScan->setAdvertisedDeviceCallbacks(new MyAdvertisedDeviceCallbacks());
+    pBLEScan->setActiveScan(true); //active scan uses more power, but get results faster
+    pBLEScan->setInterval(0x50);
+    pBLEScan->setWindow(0x30);
+
+}
+
+void loop() {
+   BLEScanResults foundDevices = pBLEScan->start(SCAN_TIME);
+    int count = foundDevices.getCount();
+    Serial.printf("Found device count : %d\n", count);
+    Serial.println();
+}
